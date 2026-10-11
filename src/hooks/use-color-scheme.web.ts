@@ -8,6 +8,8 @@ export function useColorScheme() {
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
+    // Keep static HTML and the first client render on the same theme before reading the device theme.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional one-time hydration gate.
     setHasHydrated(true);
   }, []);
 

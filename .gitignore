@@ -13,8 +13,10 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+*.keystore
 *.p8
 *.p12
+*.pfx
 *.key
 *.mobileprovision
 
@@ -30,8 +32,21 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# environment files (examples must contain placeholders only)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# local credentials and signing configuration
+.npmrc
+/credentials.json
+/secrets/
+/.aws/
+/.ssh/
+**/service-account*.json
+**/serviceAccount*.json
+**/firebase-adminsdk*.json
 
 # typescript
 *.tsbuildinfo

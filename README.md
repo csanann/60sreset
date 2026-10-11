@@ -1,56 +1,48 @@
-# Welcome to your Expo app 👋
+# 60sreset
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo starter application. Ticket 1.1 establishes development tooling only; the starter UI is unchanged.
 
-## Get started
+## Stack
 
-1. Install dependencies
+Expo SDK 57, React Native 0.86, React 19.2, Expo Router, and strict TypeScript.
+ESLint 9 uses the SDK-compatible `eslint-config-expo/flat` configuration.
 
-   ```bash
-   npm install
-   ```
+## Setup and run
 
-2. Start the app
+Use Node **22.23.3** (pinned in `.nvmrc`) and npm **10.9.9**, the verified baseline.
+Expo 57 requires at least Node 22.13.x. A global npm upgrade is not required.
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```sh
+nvm use
+npm ci
+npm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- `nvm use` selects the project Node version for this terminal. If missing, run `nvm install` first.
+- `npm ci` installs the committed dependency lockfile without updating it.
+- `npm start` starts the local Expo development server. Press `w` for web; Ctrl+C stops it.
 
-### Other setup steps
+nvm does not switch automatically when changing folders. Run `nvm use` in a new project terminal and check `node --version` and `npm --version` if tools report an unsupported runtime. Do not change your global nvm default for this project.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Checks
 
-## Learn more
+```sh
+npm run typecheck
+npm run lint
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Typecheck checks TypeScript without generating JavaScript. Lint uses Expo's ESLint rules. Both should exit successfully; these checks do not prove mobile runtime behaviour. No unit-test suite is configured yet.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Structure
 
-## Join the community
+- `src/app/`: Expo Router screens and navigation layout.
+- `src/components/`, `src/hooks/`, `src/constants/`: shared starter code.
+- `assets/`: icons and images.
+- `app.json`: Expo application configuration.
+- `eslint.config.js`: Expo ESLint flat configuration.
+- `PLAN.md`, `LEARNING_LOG.md`: current scope and learning evidence.
 
-Join our community of developers creating universal apps.
+## References
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [Expo 57 requirements](https://docs.expo.dev/versions/v57.0.0/)
+- [Expo ESLint setup](https://docs.expo.dev/guides/using-eslint/)
