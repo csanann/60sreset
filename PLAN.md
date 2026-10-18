@@ -2,7 +2,7 @@
 
 ## Objective and current stage
 
-Ticket 1.3A: connect the existing 60sReset screen to one server-side mock endpoint. Ticket 1.1 tooling and Ticket 1.2 UI implementation are complete; device acceptance remains outstanding.
+Ticket 1.3A is complete as of 2026-10-18 for the development mock-endpoint scope. The implementation, 40 automated tests and user-reported manual browser checks pass. Mobile acceptance, dependency-security follow-ups and production hosting remain outstanding; completion does not establish production readiness.
 
 ## Completed setup
 
@@ -15,18 +15,31 @@ Ticket 1.3A: connect the existing 60sReset screen to one server-side mock endpoi
 
 ## Next task
 
-Manually verify the connected screen in the browser and on the intended mobile platform. Preserve the security follow-up below. Do not commit or push automatically.
+Verify the connected screen on the intended mobile platform and address the security/hosting follow-ups before production release. Select the next implementation ticket separately; pricing, BYOK and BiteToBalance decisions remain deferred. Documentation changes are prepared for review on `main`; do not commit or push automatically.
 
-## Ticket 1.3A — Mock endpoint
+## Ticket 1.3A — Mock endpoint — Complete (2026-10-18)
 
+- Request flow: the screen calls the client helper, which sends an HTTP POST to the `/api/reset` endpoint with JSON `{ "thought": "Synthetic test thought" }`. The server parses/validates the body and returns JSON containing `mock`, `label` and `reflection`. POST is the method, the endpoint is the destination, and JSON is the data format.
+- Client validation gives immediate feedback and avoids unnecessary requests. Server validation is authoritative because direct HTTP callers can bypass the UI. Shared rules in `reset-contract.ts` are applied independently at both boundaries; TypeScript types do not validate incoming JSON at runtime.
 - Added Expo Router `POST /api/reset` using SDK 57 server output. Accepts exactly `{ thought: string }`, non-whitespace, at most 2,000 UTF-16 code units before trimming; body capped at 16 KiB while streaming.
 - Returns one fixed reflection explicitly labelled as mock/not AI-generated, independent of input. Validates JSON/content type and returns fixed 400/413/415/500 errors. Unsupported methods are handled by Router (405).
 - Reset now calls the server with loading, success and retryable error states. Input/submission are disabled during requests; a synchronous guard prevents duplicate submissions. Requests time out after 10 seconds and abort on unmount; edits clear results/errors.
 - No external AI, authentication, database, analytics, persistence, thought logging, secrets, environment variables or added dependencies. Thoughts are transiently transmitted to the app server; responses never echo input and use `no-store`. Future hosting must not capture request bodies.
 - Added Node built-in tests for validation boundaries, malformed input, body limits, UTF-8 chunking, safe errors, client HTTP/network/protocol failures, timeout and cancellation. Explicit `.ts` imports allow Node to run the same source; TypeScript permits these through `allowImportingTsExtensions`.
 - Removed the stale `/explore` link from the unused web tab component to resolve a typecheck failure caused by the earlier route removal. Existing `_layout.tsx` changes and Explore route deletion were preserved.
-- Verification: 40 tests, lint, typecheck and web/server export passed. Exported-server HTTP checks confirmed 200 for valid POST, 400 for invalid input/JSON, 413 for excessive body size, 415 for unsupported content type and 405 for GET. Final review tightened the client validation test to assert that invalid input makes zero network calls. Browser interactions and native device behaviour remain manual acceptance items.
+- Verification: 40 tests, lint, typecheck and web/server export passed. Exported-server HTTP checks confirmed 200 for valid POST, 400 for invalid input/JSON, 413 for excessive body size, 415 for unsupported content type and 405 for GET. Final review tightened the client validation test to assert that invalid input makes zero network calls.
+- Manual browser acceptance: on 2026-10-18, the user reported all listed checks passed: blank/whitespace input, valid submission and labelled mock response, edit/resubmit, loading, blocked-network error/retry and the 2,000-character limit. This is user-reported browser evidence, separate from automated tests and device verification.
+- Future provider credentials must stay in server-only hosting secret configuration, accessed by the API handler or server-only modules. Never put credentials in client/shared modules, `EXPO_PUBLIC_` variables, public app configuration, responses or logs. No keys, secret configuration or provider integration are added in this ticket. See [Expo API route isolation](https://docs.expo.dev/router/web/api-routes/#security) and [public environment variables](https://docs.expo.dev/guides/environment-variables/).
 - Deployment is outside this ticket. Native production needs a hosted HTTPS server and Router origin; static-only hosting cannot serve this endpoint.
+
+## Deferred decisions and remaining limits
+
+- Mobile: iOS/Android connectivity, keyboard/scrolling, large text, themes and VoiceOver/TalkBack acceptance remain unverified. Browser results do not establish native behaviour.
+- Security: the dated dependency review below remains unresolved and was not rerun for this documentation update. Server-side key secrecy alone would not prevent unauthorized use or provider costs; review access/abuse controls before adding a paid provider. The current endpoint is an unauthenticated local mock by design.
+- Hosting: no deployment, production HTTPS host, native production origin or infrastructure request-body logging/retention review has been completed. Development HTTP checks used synthetic text.
+- Pricing: pricing model, amounts and billing implementation remain undecided and outside Ticket 1.3A.
+- BYOK (bring your own key): whether to support it, credential handling and the user experience remain undecided. No key entry, storage or forwarding exists.
+- BiteToBalance: any relationship or integration with this project remains undecided. No integration or data sharing is implemented.
 
 ## Ticket 1.2 — Minimal text-input UI
 
