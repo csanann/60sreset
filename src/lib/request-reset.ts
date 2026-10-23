@@ -1,12 +1,19 @@
-import { type MockReflection, validateThought } from './reset-contract.ts';
+import {
+  isRecord, parseResetResponse, RESET_FAILURE_MESSAGES, type ResetFailureCode,
+  type ResetResponse, validateThought,
+} from './reset-contract.ts';
 
-const REQUEST_ERROR = 'Could not get a mock reflection. Check your connection and try again.';
+export class ResetRequestError extends Error {
+  constructor(code: ResetFailureCode = 'REQUEST_FAILED') {
+    super(RESET_FAILURE_MESSAGES[code]);
+  }
+}
 
 export async function requestReset(
   thought: string,
   controller = new AbortController(),
   fetcher: typeof fetch = fetch,
-): Promise<MockReflection> {
+): Promise<ResetResponse> {
   const validationError = validateThought(thought);
   if (validationError) throw new Error(validationError);
 
@@ -19,20 +26,20 @@ export async function requestReset(
       signal: controller.signal,
       credentials: 'omit',
     });
-    if (!response.ok) throw new Error(REQUEST_ERROR);
-    const body: unknown = await response.json();
-    if (
-      body === null || typeof body !== 'object' ||
-      !('mock' in body) || body.mock !== true ||
-      !('label' in body) || typeof body.label !== 'string' || !body.label.trim() ||
-      !('reflection' in body) || typeof body.reflection !== 'string' || !body.reflection.trim()
-    ) {
-      throw new Error(REQUEST_ERROR);
+    if (!response.ok) {
+      const errorBody: unknown = await response.json();
+      const code = isRecord(errorBody) ? errorBody.code : null;
+      // Ignore server message text; only recognized codes select local fixed copy.
+      throw new ResetRequestError(typeof code === 'string' && Object.hasOwn(RESET_FAILURE_MESSAGES, code)
+        ? code as ResetFailureCode : 'REQUEST_FAILED');
     }
-    return { mock: true, label: body.label, reflection: body.reflection };
-  } catch {
+    const result = parseResetResponse(await response.json());
+    if (!result) throw new ResetRequestError();
+    return result;
+  } catch (error) {
     // Untrusted server/network errors can contain input; show only fixed copy.
-    throw new Error(REQUEST_ERROR);
+    if (error instanceof ResetRequestError) throw error;
+    throw new ResetRequestError();
   } finally {
     clearTimeout(timeout);
   }

@@ -1,12 +1,9 @@
 import { validateThought } from '../../lib/reset-contract.ts';
+import { ResetServiceError, resetThought } from '../../lib/reset-service.ts';
+import { BodyReadError, BodyTooLargeError, readLimitedText, REQUEST_BODY_TIMEOUT_MS } from '../../lib/server-http.ts';
 
 // Allows even 2,000 JSON-escaped UTF-16 code units, while bounding body parsing.
 const MAX_BODY_BYTES = 16 * 1024;
-const MOCK_REFLECTION = {
-  mock: true,
-  label: 'Mock reflection — not AI-generated',
-  reflection: 'Take a slow breath. You do not need to untangle everything at once. Choose one small next step and give yourself permission to pause.',
-};
 
 function json(body: unknown, status = 200) {
   return Response.json(body, {
@@ -22,27 +19,10 @@ export async function POST(request: Request): Promise<Response> {
       return json({ error: 'Send an application/json body.' }, 415);
     }
 
-    // Enforce the byte limit while reading; do not trust Content-Length.
-    const reader = request.body?.getReader();
-    if (!reader) return json({ error: 'Send a JSON object with one thought field.' }, 400);
-    let text = '';
-    let bytes = 0;
-    const decoder = new TextDecoder();
-    try {
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        bytes += value.byteLength;
-        if (bytes > MAX_BODY_BYTES) {
-          await reader.cancel();
-          return json({ error: 'Request body is too large.' }, 413);
-        }
-        text += decoder.decode(value, { stream: true });
-      }
-      text += decoder.decode();
-    } finally {
-      reader.releaseLock();
-    }
+    if (!request.body) return json({ error: 'Send a JSON object with one thought field.' }, 400);
+    const text = await readLimitedText(request.body, MAX_BODY_BYTES, {
+      signal: request.signal, timeoutMs: REQUEST_BODY_TIMEOUT_MS,
+    });
 
     let body: unknown;
     try {
@@ -56,11 +36,18 @@ export async function POST(request: Request): Promise<Response> {
     ) {
       return json({ error: 'Send a JSON object with one thought field.' }, 400);
     }
-    const error = validateThought((body as { thought: unknown }).thought);
-    if (error) return json({ error }, 400);
+    const thought = (body as { thought: unknown }).thought;
+    const error = validateThought(thought);
+    if (error || typeof thought !== 'string') return json({ error }, 400);
 
-    return json(MOCK_REFLECTION);
-  } catch {
+    return json(await resetThought(thought, request.signal));
+  } catch (error) {
+    if (error instanceof BodyReadError) {
+      return json({ error: error.code === 'TIMEOUT' ? 'Request body took too long. Please try again.' : 'Request was cancelled.' }, 408);
+    }
+    if (error instanceof BodyTooLargeError) return json({ error: 'Request body is too large.' }, 413);
+    if (error instanceof TypeError) return json({ error: 'Send valid UTF-8 JSON.' }, 400);
+    if (error instanceof ResetServiceError) return json({ error: error.message, code: error.code }, error.status);
     // Never expose or log request contents, exception messages, or stack traces.
     return json({ error: 'Unable to reset thoughts. Please try again.' }, 500);
   }

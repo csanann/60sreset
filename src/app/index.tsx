@@ -6,12 +6,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/hooks/use-theme';
-import { MAX_THOUGHT_LENGTH, type MockReflection, validateThought } from '@/lib/reset-contract';
-import { requestReset } from '@/lib/request-reset';
+import { MAX_THOUGHT_LENGTH, type ResetResponse, validateThought } from '@/lib/reset-contract';
+import { ResetRequestError, requestReset } from '@/lib/request-reset';
 
 type ResetState =
   | { status: 'idle' | 'loading' }
-  | { status: 'success'; response: MockReflection }
+  | { status: 'success'; response: ResetResponse }
   | { status: 'error'; message: string };
 
 export default function HomeScreen() {
@@ -21,7 +21,8 @@ export default function HomeScreen() {
   const pendingRequest = useRef<AbortController | null>(null);
   const [focused, setFocused] = useState(false);
   const loading = reset.status === 'loading';
-  const canSubmit = !loading && validateThought(thoughts) === null;
+  const validationError = validateThought(thoughts);
+  const canSubmit = !loading && validationError === null;
 
   useEffect(() => () => {
     pendingRequest.current?.abort();
@@ -37,9 +38,10 @@ export default function HomeScreen() {
     try {
       const response = await requestReset(thoughts, controller);
       if (pendingRequest.current === controller) setReset({ status: 'success', response });
-    } catch {
+    } catch (error) {
       if (pendingRequest.current === controller) {
-        setReset({ status: 'error', message: 'Could not get a mock reflection. Check your connection and try again.' });
+        setReset({ status: 'error', message: error instanceof ResetRequestError
+          ? error.message : 'Could not get a reflection. Check your connection and try again.' });
       }
     } finally {
       if (pendingRequest.current === controller) pendingRequest.current = null;
@@ -84,8 +86,13 @@ export default function HomeScreen() {
                 },
               ]}
             />
+            {thoughts.length > 0 && validationError && (
+              <Text accessibilityLiveRegion="polite" style={[styles.note, { color: theme.text }]}>
+                {validationError}
+              </Text>
+            )}
             <Text style={[styles.note, { color: theme.textSecondary }]}>
-              Up to 2,000 characters. Sent to the mock server when you reset; not saved or analysed by AI.
+              Up to 2,000 characters. Use fictional text only. Mock by default; when the developer enables Gemini, your text is sent to Google. This app does not save your text.
             </Text>
             <Pressable
               accessibilityRole="button"
@@ -100,12 +107,12 @@ export default function HomeScreen() {
                 },
               ]}>
               <Text style={[styles.buttonText, { color: canSubmit ? theme.background : theme.textSecondary }]}>
-                {loading ? 'Getting mock reflection…' : 'Reset my thoughts'}
+                {loading ? 'Getting reflection…' : 'Reset my thoughts'}
               </Text>
             </Pressable>
             {loading && (
               <Text accessibilityLiveRegion="polite" style={[styles.note, { color: theme.text }]}>
-                Getting your mock reflection…
+                Getting your reflection…
               </Text>
             )}
             {reset.status === 'error' && (
@@ -118,9 +125,24 @@ export default function HomeScreen() {
                 <Text accessibilityRole="header" style={[styles.responseTitle, { color: theme.text }]}>
                   {reset.response.label}
                 </Text>
-                <Text style={[styles.responseText, { color: theme.text }]}>
-                  {reset.response.reflection}
-                </Text>
+                {reset.response.kind === 'safety' ? (
+                  <Text style={[styles.responseText, { color: theme.text }]}>{reset.response.message}</Text>
+                ) : (
+                  <>
+                    <Text style={[styles.responseText, { color: theme.text }]}>{reset.response.reflection}</Text>
+                    <Text accessibilityRole="header" style={[styles.responseTitle, { color: theme.text }]}>Another perspective</Text>
+                    <Text style={[styles.responseText, { color: theme.text }]}>{reset.response.perspective}</Text>
+                    {reset.response.nextStep && (
+                      <>
+                        <Text accessibilityRole="header" style={[styles.responseTitle, { color: theme.text }]}>Optional next step</Text>
+                        <Text style={[styles.responseText, { color: theme.text }]}>{reset.response.nextStep}</Text>
+                      </>
+                    )}
+                    <Text accessible style={[styles.note, { color: theme.text }]}>
+                      Your reset works best when you describe what&apos;s on your mind. Unclear input may lead to a less useful response.
+                    </Text>
+                  </>
+                )}
               </View>
             )}
           </View>
